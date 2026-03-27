@@ -31,15 +31,7 @@ fn main() -> Result<()> {
         }
     }
 
-    let mut encrypted_content = Vec::with_capacity(
-        usize::try_from(
-            us.get_ref()
-                .metadata()
-                .context("Reading metadata on /proc/self/exe")?
-                .len(),
-        )
-        .context("Converting file size to usize")?,
-    );
+    let mut encrypted_content = Vec::new();
     us.read_to_end(&mut encrypted_content)
         .context("Reading remaining content from /proc/self/exe")?;
     drop(us);
