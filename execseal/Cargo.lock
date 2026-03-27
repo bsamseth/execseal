@@ -138,20 +138,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "execseal-common",
- "nix",
-]
-
-[[package]]
-name = "execseal-common"
-version = "0.1.0"
-
-[[package]]
-name = "execseal-runtime"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "execseal-common",
  "memfd",
  "nix",
 ]

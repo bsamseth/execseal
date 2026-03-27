@@ -1,3 +1,9 @@
+#![no_std]
+extern crate alloc;
+
+use alloc::vec::Vec;
+
+/// Boundary used to separate runtime loader stub from the encrypted executable.
 pub const BOUNDARY: [u8; 16] = *b"EXECSEALBOUNDARY";
 
 /// Encrypt data in place using the provided password.

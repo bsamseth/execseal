@@ -1,0 +1,10 @@
+[package]
+name = "execseal-runtime"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { version = "1.0.102", default-features = false }
+execseal-common = { path = "../execseal-common" }
+memfd = "0.6.5"
+nix = { version = "0.31.2", features = ["process"] }

@@ -3,9 +3,12 @@ use std::{io::Write, os::unix::fs::PermissionsExt, path::PathBuf};
 use anyhow::{Context, Result};
 use clap::Parser;
 
-use execseal::encrypt_in_place;
+use execseal_common::{BOUNDARY, encrypt_in_place};
 
-const RUNTIME: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/target/debug/runtime"));
+const RUNTIME: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../target/debug/runtime"
+));
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -32,7 +35,7 @@ fn main() -> Result<()> {
         .write_all(RUNTIME)
         .context("Writing runtime stub to output")?;
     output
-        .write_all(&execseal::BOUNDARY)
+        .write_all(&BOUNDARY)
         .context("Writing runtime stub boundary to output")?;
     output
         .write_all(&contents)

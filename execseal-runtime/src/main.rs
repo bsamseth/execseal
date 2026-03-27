@@ -1,11 +1,15 @@
-use std::{
-    fs::File,
-    io::{BufRead, BufReader, Read},
-};
+// #![no_std]
+// #![no_main]
+//
+// extern crate alloc;
 
 use anyhow::{Context, Result};
 
-use execseal::{BOUNDARY, encrypt_in_place};
+use std::fs::File;
+use std::io::BufReader;
+use std::io::{BufRead, Read};
+
+use execseal_common::{BOUNDARY, encrypt_in_place};
 
 fn main() -> Result<()> {
     let password = std::env::var("EXECSEALPASS").context("Reading password from environment")?;
