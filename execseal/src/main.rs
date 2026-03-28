@@ -5,10 +5,7 @@ use clap::Parser;
 
 use execseal_common::{BOUNDARY, encrypt_in_place};
 
-const RUNTIME: &[u8] = include_bytes!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../target/debug/runtime"
-));
+const RUNTIME: &[u8] = include_bytes!("../../rt");
 
 #[derive(Debug, Parser)]
 struct Args {

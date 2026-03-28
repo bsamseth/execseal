@@ -1,60 +1,99 @@
-// #![no_std]
-// #![no_main]
-//
-// extern crate alloc;
+use std::{
+    convert::Infallible,
+    ffi::CString,
+    io::Write,
+    os::{
+        fd::{AsRawFd, FromRawFd},
+        unix::ffi::OsStringExt,
+    },
+};
 
-use anyhow::{Context, Result};
-
-use std::fs::File;
-use std::io::BufReader;
-use std::io::{BufRead, Read};
+use anyhow::Context;
 
 use execseal_common::{BOUNDARY, encrypt_in_place};
 
-fn main() -> Result<()> {
-    let password = std::env::var("EXECSEALPASS").context("Reading password from environment")?;
-    let mut us = BufReader::new(File::open("/proc/self/exe")?);
+fn main() {
+    // This only returns if it returns with an error, so unconditional unpack is possible.
+    let Err(err) = decrypt_and_run();
+    eprintln!("Failed to start. Error context: {err:#}");
+    unsafe { libc::exit(libc::EXIT_FAILURE) }
+}
 
-    let mut found_internal = false;
-    let mut buf = [BOUNDARY[0]; BOUNDARY.len()];
-    loop {
-        us.skip_until(BOUNDARY[0])
-            .context("searching for start of embedded binary")?;
-        us.read_exact(&mut buf[1..])
-            .context("reading 15 bytes to check for potential execseal boundary")?;
-        if buf == BOUNDARY {
-            if !found_internal {
-                found_internal = true;
-                continue;
+/// Attempt to decrypt the embedded binary and exec it.
+///
+/// This will either not return or produce an error. It will never return an `Ok`.
+fn decrypt_and_run() -> Result<Infallible, anyhow::Error> {
+    let password =
+        std::env::var("EXECSEALPASS").context("Getting EXECSEALPASS environment variable")?;
+    let mut contents = std::fs::read("/proc/self/exe").context("Reading /proc/self/exe")?;
+
+    let boundary_offset = contents
+        .array_windows()
+        .enumerate()
+        .rev()
+        .find_map(|(offset, window)| {
+            if *window == BOUNDARY {
+                Some(offset)
+            } else {
+                None
             }
-            break;
-        }
+        })
+        .context("Searching for boundary to encrypted binary")?;
+    let contents = &mut contents[boundary_offset + BOUNDARY.len()..];
+    encrypt_in_place(contents, &password).context("Decrypting binary")?;
+
+    if !contents.starts_with(b"\x7fELF") {
+        anyhow::bail!("Decryption OK but didn't produce an ELF file, abort!");
     }
 
-    let mut encrypted_content = Vec::new();
-    us.read_to_end(&mut encrypted_content)
-        .context("Reading remaining content from /proc/self/exe")?;
-    drop(us);
+    let mut memfd = {
+        let fd = unsafe { libc::memfd_create(c"execseal".as_ptr(), libc::MFD_CLOEXEC) };
+        if fd < 0 {
+            anyhow::bail!("Failed to create memfd for decrypted binary.");
+        }
+        unsafe { std::fs::File::from_raw_fd(fd) }
+    };
+    std::io::copy(&mut std::io::Cursor::new(contents), &mut memfd)
+        .context("Copying decrypted binary into memfd")?;
+    memfd.flush()?;
 
-    encrypt_in_place(&mut encrypted_content, &password);
+    let argv_storage = std::env::args_os()
+        .map(|arg| {
+            CString::new(arg.into_vec())
+                .expect("argument can't contain null bytes")
+                .into_boxed_c_str()
+        })
+        .collect::<Vec<_>>();
+    let argv = argv_storage
+        .iter()
+        .map(|arg| (**arg).as_ptr())
+        .chain([std::ptr::null()])
+        .collect::<Vec<_>>();
 
-    assert!(
-        encrypted_content.starts_with(b"\x7fELF"),
-        "Decryption failed"
+    let envp_storage = std::env::vars_os()
+        .filter_map(|(key, value)| {
+            if key == "EXECSEALPASS" {
+                return None;
+            }
+            let mut env_var = key.into_vec();
+            env_var.push(b'=');
+            env_var.extend_from_slice(&value.into_vec());
+            Some(
+                CString::new(env_var)
+                    .expect("argument can't contain null bytes")
+                    .into_boxed_c_str(),
+            )
+        })
+        .collect::<Vec<_>>();
+    let envp = envp_storage
+        .iter()
+        .map(|var| (**var).as_ptr())
+        // .chain([std::ptr::null()])
+        .collect::<Vec<_>>();
+
+    unsafe { libc::fexecve(memfd.as_raw_fd(), argv.as_ptr(), envp.as_ptr()) };
+    anyhow::bail!(
+        "Executing decrypted program failed with error: {}",
+        std::io::Error::last_os_error()
     );
-
-    let tmp_file = memfd::MemfdOptions::new()
-        .close_on_exec(true)
-        .create("execseal")?;
-    std::io::copy(
-        &mut std::io::Cursor::new(encrypted_content),
-        &mut tmp_file.as_file(),
-    )
-    .context("Copying decrypted content to memfd")?;
-
-    // TODO: Copy out argv and env
-    nix::unistd::fexecve(tmp_file.into_file(), &[c"execseal"], &[c""])
-        .context("Executing decrypted payload")?;
-
-    panic!("Executing decrypted program failed!");
 }

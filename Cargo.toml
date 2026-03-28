@@ -2,3 +2,10 @@
 resolver = "3"
 
 members = ["execseal", "execseal-common", "execseal-runtime"]
+
+[profile.release]
+codegen-units = 1
+lto = true
+panic = "abort"
+opt-level = "s"
+strip = true
