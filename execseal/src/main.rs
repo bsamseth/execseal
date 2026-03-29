@@ -5,7 +5,7 @@ use clap::Parser;
 
 use execseal_common::{BOUNDARY, encrypt_in_place};
 
-const RUNTIME: &[u8] = include_bytes!("../../rt");
+const RUNTIME: &[u8] = include_bytes!(env!("EXECSEAL_RUNTIME"));
 
 #[derive(Debug, Parser)]
 struct Args {

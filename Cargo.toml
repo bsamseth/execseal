@@ -9,3 +9,11 @@ lto = true
 panic = "abort"
 opt-level = "s"
 strip = true
+
+[profile.release-nightly]
+# This profile has the same options as release, but exists to separate the
+# builds between stable and nightly. We use some nightly options to minimize
+# the runtime, and switching between these and a "normal" stable build will
+# invalidate the cache each time. Splitting into distinct profiles let's both
+# caches live at the same time.
+inherits = "release"
