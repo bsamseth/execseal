@@ -1,7 +1,7 @@
 use core::fmt::Display;
 
-use chacha20poly1305::{
-    ChaCha20Poly1305, Nonce,
+use aes_gcm_siv::{
+    Aes256GcmSiv, Nonce,
     aead::{AeadCore, AeadMutInPlace, KeyInit, OsRng},
 };
 use sha3::Digest;
@@ -23,7 +23,7 @@ pub enum CryptoError {
 /// Errors with a [`CryptoError`] if something goes wrong. See the possible variants for details.
 pub fn encrypt_in_place(data: &mut Vec<u8>, password: &str) -> Result<Nonce, CryptoError> {
     let mut cipher = key_from_password(password);
-    let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
+    let nonce = Aes256GcmSiv::generate_nonce(&mut OsRng);
     cipher
         .encrypt_in_place(&nonce, b"EXECSEAL", data)
         .map_err(|_| CryptoError::Encryption)?;
@@ -51,11 +51,11 @@ pub fn decrypt_in_place(
     Ok(())
 }
 
-fn key_from_password(password: &str) -> ChaCha20Poly1305 {
+fn key_from_password(password: &str) -> Aes256GcmSiv {
     let mut hasher = sha3::Sha3_256::new_with_prefix(b"execseal");
     hasher.update(password.as_bytes());
     let key = hasher.finalize();
-    ChaCha20Poly1305::new(&key)
+    Aes256GcmSiv::new(&key)
 }
 
 impl Display for CryptoError {
