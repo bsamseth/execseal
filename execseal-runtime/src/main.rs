@@ -13,6 +13,12 @@ use anyhow::Context;
 use execseal_common::{BOUNDARY, decrypt_in_place};
 
 fn main() {
+    if std::env::var_os("EXECSEALPASS").is_none() {
+        println!(
+            "This executable is encrypted. To unlock, provide the password as an environment variable: EXECSEALPASS"
+        );
+        return;
+    }
     // This only returns if it returns with an error, so unconditional unpack is possible.
     let Err(err) = decrypt_and_run();
     eprintln!("Failed to start. Error context: {err:#}");
