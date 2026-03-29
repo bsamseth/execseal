@@ -10,7 +10,7 @@ use std::{
 
 use anyhow::Context;
 
-use execseal_common::{BOUNDARY, encrypt_in_place};
+use execseal_common::{BOUNDARY, decrypt_in_place};
 
 fn main() {
     // This only returns if it returns with an error, so unconditional unpack is possible.
@@ -39,8 +39,16 @@ fn decrypt_and_run() -> Result<Infallible, anyhow::Error> {
             }
         })
         .context("Searching for boundary to encrypted binary")?;
-    let contents = &mut contents[boundary_offset + BOUNDARY.len()..];
-    encrypt_in_place(contents, &password).context("Decrypting binary")?;
+
+    let nonce: [u8; 12] = contents
+        .get(boundary_offset + BOUNDARY.len()..)
+        .into_iter()
+        .find_map(|slice| slice.get(..12))
+        .context("Extracting encryption nonce from binary")?
+        .try_into()
+        .unwrap(); // Length checked.
+    let mut contents = contents.split_off(boundary_offset + BOUNDARY.len() + nonce.len());
+    decrypt_in_place(&mut contents, &password, &nonce).context("Decrypting binary")?;
 
     if !contents.starts_with(b"\x7fELF") {
         anyhow::bail!("Decryption OK but didn't produce an ELF file, abort!");
@@ -88,7 +96,7 @@ fn decrypt_and_run() -> Result<Infallible, anyhow::Error> {
     let envp = envp_storage
         .iter()
         .map(|var| (**var).as_ptr())
-        // .chain([std::ptr::null()])
+        .chain([std::ptr::null()])
         .collect::<Vec<_>>();
 
     unsafe { libc::fexecve(memfd.as_raw_fd(), argv.as_ptr(), envp.as_ptr()) };

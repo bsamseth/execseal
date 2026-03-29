@@ -14,9 +14,9 @@ test:
 # Test with release builds
 test-release: build-release-runtime
     gcc dummy.c -o protectme
-    cargo run --release --bin execseal -- --password hello --output protected protectme
+    cargo run --release --bin execseal -- --password letmein --output protected protectme
     ls -la protected protectme
-    EXECSEALPASS=hello ./protected
+    EXECSEALPASS=letmein ./protected
 
 # Build a minimized runtime.
 build-release-runtime target="x86_64-unknown-linux-gnu":

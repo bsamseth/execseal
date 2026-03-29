@@ -21,7 +21,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     let mut contents = std::fs::read(args.executable).context("Reading executable")?;
-    encrypt_in_place(&mut contents, &args.password);
+    let nonce = encrypt_in_place(&mut contents, &args.password).context("Encrypting executable")?;
 
     let mut output = std::fs::OpenOptions::new()
         .create(true)
@@ -34,6 +34,9 @@ fn main() -> Result<()> {
     output
         .write_all(&BOUNDARY)
         .context("Writing runtime stub boundary to output")?;
+    output
+        .write_all(&nonce)
+        .context("Writing nonce to output")?;
     output
         .write_all(&contents)
         .context("Writing encrypted data")?;
