@@ -14,20 +14,20 @@ struct Args {
     #[arg(short, long)]
     password: String,
     #[arg(short, long)]
-    output: PathBuf,
+    output: Option<PathBuf>,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    let mut contents = std::fs::read(args.executable).context("Reading executable")?;
+    let mut contents = std::fs::read(&args.executable).context("Reading executable")?;
     let nonce = encrypt_in_place(&mut contents, &args.password).context("Encrypting executable")?;
 
     let mut output = std::fs::OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
-        .open(&args.output)?;
+        .open(args.output.unwrap_or(args.executable))?;
     output
         .write_all(RUNTIME)
         .context("Writing runtime stub to output")?;
