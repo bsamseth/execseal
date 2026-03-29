@@ -18,7 +18,7 @@ test-release: build-release-runtime
     ls -la protected protectme
     env -i EXECSEALPASS=letmein FOO=bar ./protected one two three
 
-# Build a minimized runtime.
+# Build a minimized runtime. https://github.com/johnthagen/min-sized-rust
 build-release-runtime target="x86_64-unknown-linux-gnu":
     RUSTFLAGS="-Zlocation-detail=none -Zfmt-debug=none -Zunstable-options -Cpanic=immediate-abort" \
         cargo +nightly build \
