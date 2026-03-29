@@ -4,19 +4,19 @@ default:
 
 # Test with debug builds
 test:
-    gcc dummy.c -o protectme
+    gcc protectme.c -o protectme
     cargo build --bin execseal-runtime
     ln -sf target/debug/execseal-runtime rt
     cargo run --bin execseal -- --password hello --output protected protectme 
-    EXECSEALPASS=hello ./protected
+    env -i EXECSEALPASS=hello FOO=bar ./protected one two three
 
 
 # Test with release builds
 test-release: build-release-runtime
-    gcc dummy.c -o protectme
+    gcc protectme.c -o protectme
     cargo run --release --bin execseal -- --password letmein --output protected protectme
     ls -la protected protectme
-    EXECSEALPASS=letmein ./protected
+    env -i EXECSEALPASS=letmein FOO=bar ./protected one two three
 
 # Build a minimized runtime.
 build-release-runtime target="x86_64-unknown-linux-gnu":
