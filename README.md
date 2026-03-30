@@ -1,6 +1,6 @@
 # Execseal - Password Protected Executables
 
-This tool lets you encrypt a binary (currently only linux ELF) into a
+This tool lets you encrypt a binary (currently only Linux ELF) into a
 self-decrypting copy. The generated binary will try to decrypt itself using a
 password supplied through the `EXECSEALPASS` environment variable. When the
 correct password is provided, it behaves identically to the original
@@ -47,23 +47,23 @@ what features are enabled. This shows the sizes for `x86_64-unknown-linux-gnu`.
 | `minimal-size` |   54 KB  |
 
 The feature `minimal-size` exists as a shorthand to enable all space saving features.
-Note that `upx`, if enabled, is only used at build time. It will not be used by `execseal` after its been compiled.
+Note that `upx`, if enabled, is only used at build time. It will not be used by `execseal` after it has been compiled.
 
-### Requirements for Smallest Possible Runtime
+### Requirements for smallest possible runtime
 
 ```bash
 sudo apt-get install -y upx-ucl  # To compress the runtime.
 
 # The rust standard library used by the runtime will be built from source,
-# with options set to minmize the size. This requires the `rust-src` component.
-# Building without this installed will emitt an error telling you to install the component.
+# with options set to minimize the size. This requires the `rust-src` component.
+# Building without this installed will emit an error telling you to install the component.
 # Something like this, adapting the toolchain name as needed:
 rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
 ```
 
 ### Static files
 
-The encrypted binaries will by dynamically linked if `execseal` is compiled
+The encrypted binaries will be dynamically linked if `execseal` is compiled
 dynamically. This is regardless of the type of executable you encrypt - the
 self-decrypting runtime will have the same linkage as `execseal`. If you want
 to produce static binaries, then you should install with a different target.
