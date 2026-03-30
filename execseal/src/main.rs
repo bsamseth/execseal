@@ -24,11 +24,14 @@ struct Args {
     #[arg(index = 1)]
     executable: PathBuf,
     /// The password used to encrypt/decrypt.
-    #[arg(short, long)]
+    #[arg(short, long, env = "EXECSEALPASS")]
     password: String,
     /// Where to write the output.
+    ///
+    /// By default the original file will be replaced. If the input was read from stdin the
+    /// default output is stdout.
     #[arg(short, long)]
-    output: PathBuf,
+    output: Option<PathBuf>,
     /// Recover the original executable from an already encrypted file.
     #[arg(short, long, default_value = "false")]
     decrypt: bool,
@@ -48,62 +51,88 @@ fn main() -> Result<()> {
     };
 
     if args.decrypt {
-        make_decrypted(&args, contents).context("Decrypting binary")
+        make_decrypted(args, contents).context("Decrypting binary")
     } else {
-        make_encrypted(&args, contents).context("Making encrypted binary")
+        make_encrypted(args, contents).context("Making encrypted binary")
     }
 }
 
-fn make_encrypted(args: &Args, mut contents: Vec<u8>) -> Result<()> {
+fn make_encrypted(args: Args, mut contents: Vec<u8>) -> Result<()> {
+    fn write_to_output(
+        mut output: impl std::io::Write,
+        contents: &[u8],
+        nonce: &[u8],
+    ) -> Result<()> {
+        output
+            .write_all(RUNTIME)
+            .context("Writing runtime stub to output")?;
+        output
+            .write_all(&BOUNDARY)
+            .context("Writing runtime stub boundary to output")?;
+        output.write_all(nonce).context("Writing nonce to output")?;
+        output.write_all(contents).context("Writing encrypted data")
+    }
+
     let nonce = encrypt_in_place(&mut contents, &args.password).context("Encrypting executable")?;
-    let mut output = std::fs::OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(&args.output)?;
-    output
-        .write_all(RUNTIME)
-        .context("Writing runtime stub to output")?;
-    output
-        .write_all(&BOUNDARY)
-        .context("Writing runtime stub boundary to output")?;
-    output
-        .write_all(&nonce)
-        .context("Writing nonce to output")?;
-    output
-        .write_all(&contents)
-        .context("Writing encrypted data")?;
-    output.sync_all().context("Flushing data to disk")?;
 
-    make_file_executable(&output).context("Making output executable")?;
+    if args.output.is_some() || args.executable.as_os_str() != "-" {
+        let replace = args.output.is_none();
+        let output_name = args.output.unwrap_or(args.executable);
+        let mut output = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&output_name)?;
+        write_to_output(&mut output, &contents, &nonce).context("Writing output executable")?;
+        output.sync_all().context("Flushing data to disk")?;
+        if !replace {
+            make_file_executable(&output).context("Making output executable")?;
+        }
 
-    println!(
-        "Password protected copy written to {}.",
-        args.output.display()
-    );
-    println!("To run it:");
-    println!("\tEXECSEALPASS=*** {}", args.output.display());
+        eprintln!(
+            "Password protected executable written to {}.",
+            output_name.display()
+        );
+        eprintln!("To run it:");
+        eprintln!("\tEXECSEALPASS=*** {}", output_name.display());
+    } else {
+        write_to_output(std::io::stdout(), &contents, &nonce)
+            .context("Writing output executable to stdout")?;
+        eprintln!("Password protected executable written to stdout.");
+    }
     Ok(())
 }
 
-fn make_decrypted(args: &Args, contents: Vec<u8>) -> Result<()> {
+fn make_decrypted(args: Args, contents: Vec<u8>) -> Result<()> {
     let contents = execseal_common::decrypt_executable(contents, &args.password)
         .context("Decrypting executable")?;
-    let mut output = std::fs::OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(&args.output)?;
-    output
-        .write_all(&contents)
-        .context("Writing decrypted executable to disk")?;
-    output.sync_all().context("Flushing data to disk")?;
-    make_file_executable(&output).context("Makig output executable")?;
 
-    println!(
-        "Decrypted original executable written to {}.",
-        args.output.display()
-    );
+    if args.output.is_some() || args.executable.as_os_str() != "-" {
+        let replace = args.output.is_none();
+        let output_name = args.output.unwrap_or(args.executable);
+        let mut output = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&output_name)?;
+        output
+            .write_all(&contents)
+            .context("Writing decrypted executable to disk")?;
+        output.sync_all().context("Flushing data to disk")?;
+        if !replace {
+            make_file_executable(&output).context("Making output executable")?;
+        }
+
+        eprintln!(
+            "Decrypted original executable written to {}.",
+            output_name.display()
+        );
+    } else {
+        std::io::stdout()
+            .write_all(&contents)
+            .context("Writing decrypted executable to stdout")?;
+        eprintln!("Decrypted original executable written to stdout.",);
+    }
     Ok(())
 }
 
