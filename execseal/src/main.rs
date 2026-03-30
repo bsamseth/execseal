@@ -13,10 +13,10 @@ const RUNTIME: &[u8] = include_bytes!(env!("EXECSEAL_RUNTIME"));
 
 /// Execseal - Password Protected executables.
 ///
-/// Turn any ELF executable into a self-decrypting copy. The resulting binary will attempt to
-/// self-decrypt based on a password provided as an environment variable `EXECSEALPASS`. If this is
-/// set to the correct password, the binary acts just like the original, unencrypted one. If the
-/// password is not provided, or a wrong one is provided the binary exits with a error.
+/// Transform any ELF executable into a self-decrypting version. The generated binary will try to
+/// decrypt itself using a password supplied through the EXECSEALPASS environment variable. When
+/// the correct password is provided, it behaves identically to the original unencrypted program.
+/// If the password is missing or incorrect, the binary terminates with an error.
 #[derive(Debug, Parser)]
 #[command(arg_required_else_help(true))]
 struct Args {
