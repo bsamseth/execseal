@@ -13,9 +13,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Build
-        run: |
-          sudo apt-get update
+      - name: Install deps
+        run: sudo apt-get update
           sudo apt-get install -y upx-ucl
           rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
-          cargo build --release --verbose --bin execseal
+      - name: Build stable
+        run: cargo build --release --bin execseal
+      - name: Build nightly
+        run: cargo build --release --bin execseal --features minimal-size
