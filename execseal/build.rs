@@ -13,7 +13,7 @@ fn main() {
 fn build_runtime(env_vars: impl Iterator<Item = (String, String)>) {
     let target = std::env::var("TARGET").expect("cargo should set TARGET environment");
     let target_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../target/runtime");
-    let runtime_binary = format!("{target_dir}/x86_64-unknown-linux-gnu/release/execseal-runtime");
+    let runtime_binary = format!("{target_dir}/{target}/release/execseal-runtime");
 
     let status = Command::new("cargo")
         .args([
