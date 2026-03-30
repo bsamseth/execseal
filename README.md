@@ -43,6 +43,7 @@ what features are enabled
 | `minimal-size` |   54 KB  |
 
 The feature `minimal-size` exists as a shorthand to enable all space saving features.
+Note that `upx`, if enabled, is only used at build time. It will not be used by `execseal` after its been compiled.
 
 
 ```bash
