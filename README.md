@@ -31,6 +31,10 @@ Decrypted original executable written to recovered.
 
 ## Install
 
+```bash
+cargo install --git https://github.com/bsamseth/execseal execseal --features ...
+```
+
 `execseal` works by prepending the encrypted binary with a runtime that can
 decrypt itself. This runtime takes up some space. The space it takes depends on
 what features are enabled
@@ -44,11 +48,6 @@ what features are enabled
 
 The feature `minimal-size` exists as a shorthand to enable all space saving features.
 Note that `upx`, if enabled, is only used at build time. It will not be used by `execseal` after its been compiled.
-
-
-```bash
-cargo install execseal --features ...
-```
 
 ### Requirements for Smallest Possible Runtime
 
