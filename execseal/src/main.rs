@@ -1,4 +1,8 @@
-use std::{io::Write, os::unix::fs::PermissionsExt, path::PathBuf};
+use std::{
+    io::{Read, Write},
+    os::unix::fs::PermissionsExt,
+    path::PathBuf,
+};
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -7,7 +11,14 @@ use execseal_common::{BOUNDARY, encrypt_in_place};
 
 const RUNTIME: &[u8] = include_bytes!(env!("EXECSEAL_RUNTIME"));
 
+/// Execseal - Password Protected executables.
+///
+/// Turn any ELF executable into a self-decrypting copy. The resulting binary will attempt to
+/// self-decrypt based on a password provided as an environment variable `EXECSEALPASS`. If this is
+/// set to the correct password, the binary acts just like the original, unencrypted one. If the
+/// password is not provided, or a wrong one is provided the binary exits with a error.
 #[derive(Debug, Parser)]
+#[command(arg_required_else_help(true))]
 struct Args {
     #[arg(index = 1)]
     executable: PathBuf,
@@ -20,7 +31,15 @@ struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    let mut contents = std::fs::read(args.executable).context("Reading executable")?;
+    let mut contents = if args.executable.as_os_str() == "-" {
+        let mut exec = Vec::new();
+        std::io::stdin()
+            .read_to_end(&mut exec)
+            .context("Reading executable from stdin")?;
+        exec
+    } else {
+        std::fs::read(&args.executable).context("Reading executable")?
+    };
     let nonce = encrypt_in_place(&mut contents, &args.password).context("Encrypting executable")?;
 
     let mut output = std::fs::OpenOptions::new()
@@ -46,5 +65,12 @@ fn main() -> Result<()> {
     let mut permissions = output.metadata()?.permissions();
     permissions.set_mode(permissions.mode() | 0o111);
     output.set_permissions(permissions)?;
+
+    println!(
+        "Password protected copy written to {}.",
+        args.output.display()
+    );
+    println!("To run it:");
+    println!("\tEXECSEALPASS=*** {}", args.output.display());
     Ok(())
 }
