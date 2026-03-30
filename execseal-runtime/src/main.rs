@@ -10,8 +10,6 @@ use std::{
 
 use anyhow::Context;
 
-use execseal_common::{BOUNDARY, decrypt_in_place};
-
 fn main() {
     if std::env::var_os("EXECSEALPASS").is_none() {
         println!(
@@ -31,34 +29,9 @@ fn main() {
 fn decrypt_and_run() -> Result<Infallible, anyhow::Error> {
     let password =
         std::env::var("EXECSEALPASS").context("Getting EXECSEALPASS environment variable")?;
-    let mut contents = std::fs::read("/proc/self/exe").context("Reading /proc/self/exe")?;
-
-    let boundary_offset = contents
-        .array_windows()
-        .enumerate()
-        .rev()
-        .find_map(|(offset, window)| {
-            if *window == BOUNDARY {
-                Some(offset)
-            } else {
-                None
-            }
-        })
-        .context("Searching for boundary to encrypted binary")?;
-
-    let nonce: [u8; 12] = contents
-        .get(boundary_offset + BOUNDARY.len()..)
-        .into_iter()
-        .find_map(|slice| slice.get(..12))
-        .context("Extracting encryption nonce from binary")?
-        .try_into()
-        .unwrap(); // Length checked.
-    let mut contents = contents.split_off(boundary_offset + BOUNDARY.len() + nonce.len());
-    decrypt_in_place(&mut contents, &password, &nonce).context("Decrypting binary")?;
-
-    if !contents.starts_with(b"\x7fELF") {
-        anyhow::bail!("Decryption OK but didn't produce an ELF file, abort!");
-    }
+    let contents = std::fs::read("/proc/self/exe").context("Reading /proc/self/exe")?;
+    let contents = execseal_common::decrypt_executable(contents, &password)
+        .context("Decrypting executable")?;
 
     let mut memfd = {
         let fd = unsafe { libc::memfd_create(c"execseal".as_ptr(), libc::MFD_CLOEXEC) };

@@ -51,6 +51,43 @@ pub fn decrypt_in_place(
     Ok(())
 }
 
+/// Decrypt an encrypted ELF.
+///
+/// # Errors
+/// Can fail if the provided contents are malformed, the password is incorrect, or the resulting
+/// payload does not appear to be an ELF file.
+pub fn decrypt_executable(mut contents: Vec<u8>, password: &str) -> anyhow::Result<Vec<u8>> {
+    use anyhow::Context;
+
+    let boundary_offset = contents
+        .array_windows()
+        .enumerate()
+        .rev()
+        .find_map(|(offset, window)| {
+            if *window == BOUNDARY {
+                Some(offset)
+            } else {
+                None
+            }
+        })
+        .context("Searching for boundary to encrypted binary")?;
+
+    let nonce = contents
+        .get(boundary_offset + BOUNDARY.len()..)
+        .into_iter()
+        .find_map(|slice| slice.get(..12))
+        .context("Extracting encryption nonce from binary")?;
+    // SAFETY: The size is exactly 12 bytes.
+    let nonce: [u8; 12] = unsafe { nonce.try_into().unwrap_unchecked() };
+    let mut contents = contents.split_off(boundary_offset + BOUNDARY.len() + nonce.len());
+    decrypt_in_place(&mut contents, password, &nonce).context("Decrypting binary")?;
+
+    if !contents.starts_with(b"\x7fELF") {
+        anyhow::bail!("Decryption OK but didn't produce an ELF file, abort!");
+    }
+    Ok(contents)
+}
+
 fn key_from_password(password: &str) -> Aes256GcmSiv {
     let mut hasher = sha3::Sha3_256::new_with_prefix(b"execseal");
     hasher.update(password.as_bytes());
