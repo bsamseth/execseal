@@ -37,7 +37,7 @@ cargo install --git https://github.com/bsamseth/execseal execseal --features ...
 
 `execseal` works by prepending the encrypted binary with a runtime that can
 decrypt itself. This runtime takes up some space. The space it takes depends on
-what features are enabled
+what features are enabled. This shows the sizes for `x86_64-unknown-linux-gnu`.
 
 |    Features    |   Size   |
 |----------------|----------|
@@ -60,6 +60,20 @@ sudo apt-get install -y upx-ucl  # To compress the runtime.
 # Something like this, adapting the toolchain name as needed:
 rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
 ```
+
+### Static files
+
+The encrypted binaries will by dynamically linked if `execseal` is compiled
+dynamically. This is regardless of the type of executable you encrypt - the
+self-decrypting runtime will have the same linkage as `execseal`. If you want
+to produce static binaries, then you should install with a different target.
+For Linux x64:
+
+```bash
+cargo install --git https://github.com/bsamseth/execseal execseal --target x86_64-unknown-linux-musl --features ...
+```
+
+This, of course, requires the relevant toolchain to be installed.
 
 ## How secure is it?
 
