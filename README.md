@@ -29,6 +29,38 @@ Decrypted original executable written to recovered.
 5229649db44886ed74f9096b373032f4  /bin/ls
 ```
 
+## Install
+
+`execseal` works by prepending the encrypted binary with a runtime that can
+decrypt itself. This runtime takes up some space. The space it takes depends on
+what features are enabled
+
+|    Features    |   Size   |
+|----------------|----------|
+| Nothing        |  365 KB  |
+| `upx`          |  151 KB  |
+| `nightly`      |  116 KB  |
+| `minimal-size` |   54 KB  |
+
+The feature `minimal-size` exists as a shorthand to enable all space saving features.
+
+
+```bash
+cargo install execseal --features ...
+```
+
+### Requirements for Smallest Possible Runtime
+
+```bash
+sudo apt-get install -y upx-ucl  # To compress the runtime.
+
+# The rust standard library used by the runtime will be built from source,
+# with options set to minmize the size. This requires the `rust-src` component.
+# Building without this installed will emitt an error telling you to install the component.
+# Something like this, adapting the toolchain name as needed:
+rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+```
+
 ## Why?
 
 Because I wanted to. But in theory it could be useful to distribute a program
