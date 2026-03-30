@@ -61,7 +61,24 @@ sudo apt-get install -y upx-ucl  # To compress the runtime.
 rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
 ```
 
+## How secure is it?
+
+The executables are encrypted with [AES-256](https://crates.io/crates/aes-gcm-siv).
+The symmetric encryption key is derived from the provided password using
+[SHA3-256](https://crates.io/crates/sha3).
+
+This should mean the executables are as secure as your password allows. A poor password will be possible to bypass. If you use something like
+
+```bash
+openssl rand -hex 32
+```
+
+to generate your password, it should be as secure as anything can be.
+
+If you think I made a mistake somewhere, see [#1](https://github.com/bsamseth/execseal/issues/1).
+
 ## Why?
 
-Because I wanted to. But in theory it could be useful to distribute a program
-while restricting who can actually run it.
+Because I wanted to. But in theory it could be useful if you want to distribute
+a program while restricting who can actually run it. You could share the
+resulting binary over an untrusted medium and communicate the password out-of-band.
