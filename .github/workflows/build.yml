@@ -17,8 +17,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y upx-ucl
+          rustup toolchain install nightly
+          rustup target add x86_64-unknown-linux-musl
+          rustup +nightly target add x86_64-unknown-linux-musl
           rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+          rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-musl
       - name: Build stable
         run: cargo build --release --bin execseal
       - name: Build nightly
         run: cargo build --release --bin execseal --features minimal-size
+      - name: Build nightly musl
+        run: cargo build --release --bin execseal --target x86_64-unknown-linux-musl --features minimal-size
